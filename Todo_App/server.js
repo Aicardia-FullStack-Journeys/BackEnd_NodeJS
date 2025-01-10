@@ -1,77 +1,80 @@
-const http = require('node:http');
-const fs = require('node:fs');
-const path = require('node:path');
-const url = require('node:url');
+require('dotenv').config();
 
-const express = require('express');
+const express = require('express'); 
+const bodyParser = require('body-parser');
+const mongoose = require('mongoose');
+const path = require('path');
+
+
 const app = express();
 const port = 3000;
 
-// Data and file paths (assuming a `data` directory)
-const tasksFilePath = path.join(__dirname, 'data', 'tasks.json');
-const htmlFilePath = path.join(__dirname, 'todos.html');
+//MongoDB connections stuffies
+const uri = process.env.DB_URI;
 
-// Load tasks from JSON file (or create an empty array if file doesn't exist)
-let tasks = [];
-try {
-  const data = fs.readFileSync(tasksFilePath, 'utf8');
-  tasks = JSON.parse(data);
-} catch (err) {
-  console.error('Error reading tasks.json:', err);
-  tasks = []; // Initialize with an empty array if reading fails
-}
+mongoose.connect(uri)
+  .then(() => console.log('Connected to MongoDB'))
+  .catch(err => console.error('ERROR ON PROCESS: connecting to MongoDB:', err));
 
-// Middleware to parse JSON requests
-app.use(express.json());
 
-// API endpoints for managing tasks
-app.get('/api/tasks', (req, res) => {
-  res.json(tasks);
+const todoSchema = new mongoose.Schema({
+  task: String,
+  completed: { type: Boolean, default: false }
 });
 
-app.post('/api/tasks', (req, res) => {
-  const newTask = { id: Date.now(), task: req.body.text, completed: false };
-  tasks.push(newTask);
-  saveTasks();
-  res.status(201).json(newTask);
-});
+const Todo = mongoose.model('Todo', todoSchema);
 
-app.put('/api/tasks/:id', (req, res) => {
-  const id = parseInt(req.params.id);
-  const taskIndex = tasks.findIndex(task => task.id === id);
-  if (taskIndex !== -1) {
-    tasks[taskIndex].completed = req.body.completed;
-    saveTasks();
-    res.json(tasks[taskIndex]);
-  } else {
-    res.status(404).send('Task not found');
-  }
-});
 
-app.delete('/api/tasks', (req, res) => {
-  tasks = tasks.filter(task => !task.completed);
-  saveTasks();
-  res.send('Completed tasks deleted');
-});
-
-// Helper function to save tasks to JSON file
-function saveTasks() {
-  try {
-    fs.writeFileSync(tasksFilePath, JSON.stringify(tasks, null, 2));
-  } catch (err) {
-    console.error('Error writing to tasks.json:', err);
-  }
-}
-
-// Serve static HTML file (assuming todos.html exists in the root directory)
-app.use(express.static(path.join(__dirname)));
-
-// Handle requests for the root path (/) to serve the HTML file
+app.use(bodyParser.json());
 app.get('/', (req, res) => {
-  res.sendFile(htmlFilePath);
+  res.sendFile(path.join(__dirname, 'index.html')); 
 });
 
-// Start the server
+
+app.get('/todos', async (req, res) => {
+  try {
+    const todos = await Todo.find();
+    res.json(todos);
+  } catch (err) {
+    res.status(500).json({ error: 'ERROR ON PROCESS: fetching todos' });
+  }
+});
+
+app.post('/todos', async (req, res) => {
+  try {
+    const { task } = req.body;
+    const newTodo = new Todo({ task });
+    await newTodo.save();
+    res.status(201).json(newTodo);
+  } catch (err) {
+    console.error('Error creating todo:', err); 
+    res.status(500).json({ error: 'ERROR ON PROCESS: creating todo.' }); 
+  }
+});
+
+app.put('/todos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { completed } = req.body;
+    const updatedTodo = await Todo.findByIdAndUpdate(id, { completed }, { new: true });
+    if (!updatedTodo) {
+      return res.status(404).json({ error: 'Missing todo' });
+    }
+    res.json(updatedTodo);
+  } catch (err) {
+    res.status(500).json({ error: 'update failed, Todo' });
+  }
+});
+
+app.delete('/todos', async (req, res) => { 
+  try {
+    await Todo.deleteMany({ completed: true }); 
+    res.json({ message: 'Completed todos deleted' });
+  } catch (err) {
+    res.status(500).json({ error: 'Deleting failed, Todo' });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
 });

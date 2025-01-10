@@ -1,26 +1,21 @@
 [
   {
-    "id": 1,
     "task": "Buy groceries",
     "completed": false
   },
   {
-    "id": 2,
     "task": "Finish the report",
     "completed": false
   },
   {
-    "id": 3,
     "task": "Run this app successfully",
     "completed": false
   },
   {
-    "id": 4,
     "task": "Learn Node.js",
     "completed": false
   },
   {
-    "id": 1735914539589,
     "task": "Buy a novel",
     "completed": false
   }

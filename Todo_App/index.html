@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Todo List</title>
+</head>
+<body>
+
+  <h1>Todo List</h1>
+
+  <input type="text" id="newTask" placeholder="Add new task">
+  <button onclick="addTask()">Add</button>
+  
+
+  <ul id="todoList">
+  </ul>
+
+  <button onclick="deleteCompleted()">Delete Completed</button>
+
+  <script>
+    function fetchTodos() {
+      const asyncServConnect = new XMLHttpRequest();
+      asyncServConnect.open('GET', '/todos');
+      asyncServConnect.onload = function() {
+        if (asyncServConnect.status === 200) {
+          const todos = JSON.parse(asyncServConnect.responseText);
+          displayTodos(todos);
+        } else {
+          console.error('Error fetching todos:', asyncServConnect.statusText);
+        }
+      };
+      asyncServConnect.send();
+    }
+
+    function displayTodos(todos) {
+      const todoList = document.getElementById('todoList');
+      todoList.innerHTML = ''; 
+
+      todos.forEach(todo => {
+        const listItem = document.createElement('li');
+        listItem.textContent = todo.task;
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = todo.completed;
+        checkbox.addEventListener('change', () => {
+          const asyncServConnect = new XMLHttpRequest();
+          asyncServConnect.open('PUT', `/todos/${todo._id}`);
+          asyncServConnect.setRequestHeader('Content-Type', 'application/json');
+          asyncServConnect.onload = function() {
+            if (asyncServConnect.status === 200) {
+              fetchTodos(); 
+            } else {
+              console.error('Failed to update.', asyncServConnect.statusText);
+            }
+          };
+          asyncServConnect.send(JSON.stringify({ completed: checkbox.checked }));
+        });
+
+        listItem.appendChild(checkbox);
+        listItem.appendChild(document.createTextNode(' ')); 
+        todoList.appendChild(listItem);
+      });
+    }
+
+    function addTask() {
+      const newTaskInput = document.getElementById('newTask');
+      const newTask = newTaskInput.value;
+
+      const asyncServConnect = new XMLHttpRequest();
+      asyncServConnect.open('POST', '/todos');
+      asyncServConnect.setRequestHeader('Content-Type', 'application/json');
+      asyncServConnect.onload = function() {
+        if (asyncServConnect.status === 201) {
+          newTaskInput.value = '';
+          fetchTodos();
+        } else {
+          console.error('Failed to write todo. ', asyncServConnect.statusText);
+        }
+      };
+      asyncServConnect.send(JSON.stringify({ task: newTask }));
+    }
+
+    function deleteCompleted() {
+      const asyncServConnect = new XMLHttpRequest();
+      asyncServConnect.open('DELETE', '/todos'); 
+      asyncServConnect.onload = function() {
+        if (asyncServConnect.status === 200) {
+          fetchTodos(); 
+        } else {
+          console.error('Failed to delete todo. ', asyncServConnect.statusText);
+        }
+      };
+      asyncServConnect.send();
+    }
+
+    fetchTodos(); 
+  </script>
+
+</body>
+</html>
