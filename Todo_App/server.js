@@ -20,7 +20,7 @@ mongoose.connect(uri)
 const todoSchema = new mongoose.Schema({
   task: String,
   completed: { type: Boolean, default: false }
-});
+},{ timestamps: true });
 
 const Todo = mongoose.model('Todo', todoSchema);
 
