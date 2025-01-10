@@ -15,3 +15,4 @@ This is a simple RESTful API for managing a to-do list built with Node.js, Expre
 ==================
 
   - **Node.js:** JavaScript runtime environment.
+  - **MongoDB:** ODM, data store.
